@@ -22,7 +22,7 @@ func TestWayForPay_NewCreateInvoiceRequest(t *testing.T) {
 		{
 			name: "success",
 			want: &wfp.CreateInvoiceRequest{
-				TransactionType: "CREATE_INVOICE", MerchantAccount: merchantLogin, MerchantTransactionType: "", MerchantAuthType: "", MerchantDomainName: "", MerchantSignature: "", ApiVersion: "1", Language: "EN", NotifyMethod: "all", ServiceUrl: "", OrderReference: "", OrderDate: 0, Amount: "", Currency: "", AlternativeAmount: "", AlternativeCurrency: "", OrderTimeout: "", HoldTimeout: "", ProductName: []string(nil), ProductPrice: []string(nil), ProductCount: []string(nil), PaymentSystems: "", ClientFirstName: "", ClientLastName: "", ClientEmail: "", ClientPhone: "",
+				TransactionType: "CREATE_INVOICE", MerchantAccount: merchantLogin, MerchantTransactionType: "", MerchantAuthType: wfp.SignatureModeSimple, MerchantDomainName: "", MerchantSignature: "", ApiVersion: "1", Language: "EN", NotifyMethod: "all", ServiceUrl: "", OrderReference: "", OrderDate: 0, Amount: "", Currency: "", AlternativeAmount: "", AlternativeCurrency: "", OrderTimeout: "", HoldTimeout: "", ProductName: []string(nil), ProductPrice: []string(nil), ProductCount: []string(nil), PaymentSystems: "", ClientFirstName: "", ClientLastName: "", ClientEmail: "", ClientPhone: "",
 			},
 		},
 	}
@@ -52,22 +52,40 @@ func TestWayForPay_SendInvoice(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 	cases := []struct {
-		name    string
-		request *wfp.CreateInvoiceRequest
-		want    *wfp.APIResponse
+		name        string
+		request     *wfp.CreateInvoiceRequest
+		want        *wfp.APIResponse
+		expectedErr bool
 	}{
 		{
 			name: "success",
 			request: wfpClient.NewCreateInvoiceRequest().
 				SetMerchantDomainName("test.com").
-				SetOrderDate(time.Now()).SetAmount("100").
-				SetCurrency("UAH").SetOrderReference(uuid.New().String()).
+				SetOrderDate(time.Now()).
+				SetAmount("100").
+				SetCurrency("UAH").
+				SetOrderReference(uuid.New().String()).
 				AddProduct("test", "100", "1"),
+		},
+		{
+			name: "error currency",
+			request: wfpClient.NewCreateInvoiceRequest().
+				SetMerchantDomainName("test.com").
+				SetOrderDate(time.Now()).
+				SetAmount("100").
+				SetCurrency("UAH_NOT_RUB").
+				SetOrderReference(uuid.New().String()).
+				AddProduct("test", "100", "1"),
+			expectedErr: true,
 		},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := wfpClient.Request(tt.request)
+			resp, err := wfpClient.CreateInvoice(tt.request)
+			if tt.expectedErr {
+				require.Error(t, err)
+				return
+			}
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 		})

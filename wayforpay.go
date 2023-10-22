@@ -35,9 +35,7 @@ func buildParams(in Params) url.Values {
 	if in == nil {
 		return url.Values{}
 	}
-
 	out := url.Values{}
-
 	for key, value := range in {
 		out.Set(key, value)
 	}
@@ -45,43 +43,34 @@ func buildParams(in Params) url.Values {
 	return out
 }
 
-func (w *WayForPay) makeRequest(endpoint string, body Payment, params Params) (*APIResponse, error) {
+func (w *WayForPay) makeRequest(endpoint string, body io.Reader, response Responder, params Params) error {
 	method := fmt.Sprintf(APIEndpoint, endpoint)
 	rawUrl, err := url.Parse(method)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	rawUrl.RawQuery = buildParams(params).Encode()
 	method = rawUrl.String()
 
-	req, err := http.NewRequest(http.MethodPost, method, body.body(w.merchantSecret))
+	req, err := http.NewRequest(http.MethodPost, method, body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	res, err := w.client.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer res.Body.Close()
 
 	respBody, err := io.ReadAll(res.Body)
 
-	var response APIResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
-		return nil, err
+		return err
 	}
-	if response.ReasonCode != 1100 {
-		return nil, fmt.Errorf("api error: code: %v, reason: %v", response.ReasonCode, response.Reason)
+	if response.GetReasonCode() != 1100 {
+		return fmt.Errorf("api error: code: %v, reason: %v", response.GetReasonCode(), response.GetReason())
 	}
-	return &response, nil
-}
-
-func (w *WayForPay) Request(p Payment) (Responder, error) {
-	params, err := p.params()
-	if err != nil {
-		return nil, err
-	}
-	return w.makeRequest(p.method(), p, params)
+	return nil
 }

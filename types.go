@@ -25,8 +25,18 @@ func (r *APIResponse) Error() error {
 	return nil
 }
 
+func (r *APIResponse) GetReasonCode() int {
+	return r.ReasonCode
+}
+
+func (r *APIResponse) GetReason() string {
+	return r.Reason
+}
+
 type Responder interface {
 	Error() error
+	GetReasonCode() int
+	GetReason() string
 }
 
 type SignatureMode string

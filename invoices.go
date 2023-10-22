@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -58,10 +59,6 @@ func (c *CreateInvoiceRequest) params() (Params, error) {
 
 func (c *CreateInvoiceRequest) method() string {
 	return "/pay"
-}
-
-func (c *CreateInvoiceRequest) Sign() {
-
 }
 
 func (c *CreateInvoiceRequest) body(secret string) io.Reader {
@@ -220,7 +217,7 @@ func (c *CreateInvoiceRequest) SetClientPhone(clientPhone string) *CreateInvoice
 	return c
 }
 
-func (c *CreateInvoiceRequest) Validate() error {
+func (c *CreateInvoiceRequest) validate() error {
 	if c.TransactionType == "" {
 		return ErrTransactionTypeRequired
 	}
@@ -267,6 +264,38 @@ type CreateInvoiceResponse struct {
 	QRCode     string `json:"qrCode"`
 }
 
+func (c *CreateInvoiceResponse) Error() error {
+	if c.ReasonCode != 1100 {
+		return fmt.Errorf("%d: %s", c.ReasonCode, c.Reason)
+	}
+	return nil
+}
+
+func (c *CreateInvoiceResponse) GetReasonCode() int {
+	return c.ReasonCode
+}
+
+func (c *CreateInvoiceResponse) GetReason() string {
+	return c.Reason
+}
+
+func (w *WayForPay) CreateInvoice(request *CreateInvoiceRequest) (*CreateInvoiceResponse, error) {
+
+	respBody := request.body(w.merchantSecret)
+	if err := request.validate(); err != nil {
+		return nil, err
+	}
+	params, err := request.params()
+	if err != nil {
+		return nil, err
+	}
+	var cir CreateInvoiceResponse
+	if err := w.makeRequest(fmt.Sprintf(APIEndpoint, request.method()), respBody, &cir, params); err != nil {
+		return nil, err
+	}
+	return &cir, nil
+}
+
 type RemoveInvoiceRequest struct {
 	TransactionType   string `json:"transactionType"`
 	ApiVersion        string `json:"apiVersion"`
@@ -310,7 +339,71 @@ func (r *RemoveInvoiceRequest) method() string {
 	return "/pay"
 }
 
+func (r *RemoveInvoiceRequest) body(secret string) io.Reader {
+	data := []string{
+		r.MerchantAccount,
+		r.OrderReference,
+	}
+
+	message := strings.Join(data, ";")
+	h := hmac.New(md5.New, []byte(secret))
+	h.Write([]byte(message))
+	r.MerchantSignature = hex.EncodeToString(h.Sum(nil))
+
+	body, err := json.Marshal(r)
+	if err != nil {
+		return nil
+	}
+
+	return strings.NewReader(string(body))
+}
+
+func (r *RemoveInvoiceRequest) validate() error {
+	if r.TransactionType == "" {
+		return ErrTransactionTypeRequired
+	}
+	if r.MerchantAccount == "" {
+		return ErrMerchantAccountRequired
+	}
+	if r.OrderReference == "" {
+		return ErrOrderReferenceRequired
+	}
+	return nil
+}
+
+func (w *WayForPay) RemoveInvoice(request *RemoveInvoiceRequest) (*RemoveInvoiceResponse, error) {
+
+	respBody := request.body(w.merchantSecret)
+	if err := request.validate(); err != nil {
+		return nil, err
+	}
+	params, err := request.params()
+	if err != nil {
+		return nil, err
+	}
+	var rir RemoveInvoiceResponse
+	if err := w.makeRequest(fmt.Sprintf(APIEndpoint, request.method()), respBody, &rir, params); err != nil {
+		return nil, err
+	}
+	return &rir, nil
+}
+
 type RemoveInvoiceResponse struct {
 	Reason     string `json:"reason"`
 	ReasonCode int    `json:"reasonCode"`
+}
+
+func (r *RemoveInvoiceResponse) Error() error {
+	if r.ReasonCode != 1100 {
+		return fmt.Errorf("%d: %s", r.ReasonCode, r.Reason)
+	}
+	return nil
+}
+
+func (r *RemoveInvoiceResponse) GetReasonCode() int {
+	return r.ReasonCode
+}
+
+func (r *RemoveInvoiceResponse) GetReason() string {
+	return r.Reason
 }
