@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -22,7 +23,7 @@ func TestWayForPay_NewCreateInvoiceRequest(t *testing.T) {
 		{
 			name: "success",
 			want: &wfp.CreateInvoiceRequest{
-				TransactionType: "CREATE_INVOICE", MerchantAccount: merchantLogin, MerchantTransactionType: "", MerchantAuthType: wfp.SignatureModeSimple, MerchantDomainName: "", MerchantSignature: "", ApiVersion: "1", Language: "EN", NotifyMethod: "all", ServiceUrl: "", OrderReference: "", OrderDate: 0, Amount: "", Currency: "", AlternativeAmount: "", AlternativeCurrency: "", OrderTimeout: "", HoldTimeout: "", ProductName: []string(nil), ProductPrice: []string(nil), ProductCount: []string(nil), PaymentSystems: "", ClientFirstName: "", ClientLastName: "", ClientEmail: "", ClientPhone: "",
+				TransactionType: "CREATE_INVOICE", MerchantAccount: merchantLogin, MerchantTransactionType: "", MerchantAuthType: wfp.SignatureModeSimple, MerchantDomainName: "", MerchantSignature: "", ApiVersion: "1", Language: "EN", NotifyMethod: "all", ServiceUrl: "", OrderReference: "", OrderDate: 0, Amount: "", Currency: "", AlternativeAmount: "", AlternativeCurrency: "", OrderTimeout: 86400, HoldTimeout: "", ProductName: []string(nil), ProductPrice: []string(nil), ProductCount: []string(nil), PaymentSystems: "", ClientFirstName: "", ClientLastName: "", ClientEmail: "", ClientPhone: "",
 			},
 		},
 	}
@@ -58,7 +59,7 @@ func TestWayForPay_SendInvoice(t *testing.T) {
 		expectedErr bool
 	}{
 		{
-			name: "success",
+			name: "success uah",
 			request: wfpClient.NewCreateInvoiceRequest().
 				SetMerchantDomainName("test.com").
 				SetOrderDate(time.Now()).
@@ -66,6 +67,31 @@ func TestWayForPay_SendInvoice(t *testing.T) {
 				SetCurrency("UAH").
 				SetOrderReference(uuid.New().String()).
 				AddProduct("test", "100", "1"),
+		},
+		{
+			name: "success usd",
+			//request2: wfpClient.NewCreateInvoiceRequest().
+			//	SetMerchantDomainName("test.com").
+			//	SetOrderDate(time.Now()).
+			//	SetAmount("100").
+			//	SetCurrency("USD").
+			//	SetOrderReference(uuid.New().String()).
+			//	AddProduct("🥇test", "100", "1"),
+
+			request: wfpClient.NewCreateInvoiceRequest().
+				//SetServiceUrl(fmt.Sprintf("%s%s", os.Getenv("URL"), "/callback/wfp")).
+				SetMerchantDomainName("a01k.io").
+				SetOrderReference(uuid.NewString()).
+				SetOrderDate(time.Now()).
+				SetCurrency("USD").
+				SetAlternativeCurrency("UAH").
+				SetAmount(strconv.FormatFloat(600.00, 'f', 1, 64)).
+				SetOrderTimeout(60*time.Minute).
+				AddProduct(
+					"🥇test",
+					strconv.FormatFloat(600.00, 'f', 1, 64),
+					"1",
+				),
 		},
 		{
 			name: "error currency",

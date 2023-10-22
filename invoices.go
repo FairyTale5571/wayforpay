@@ -29,7 +29,7 @@ type CreateInvoiceRequest struct {
 	Currency                string        `json:"currency"`
 	AlternativeAmount       string        `json:"alternativeAmount,omitempty"`
 	AlternativeCurrency     string        `json:"alternativeCurrency,omitempty"`
-	OrderTimeout            string        `json:"orderTimeout,omitempty"`
+	OrderTimeout            time.Duration `json:"orderTimeout,omitempty"`
 	HoldTimeout             string        `json:"holdTimeout,omitempty"`
 	ProductName             []string      `json:"productName"`
 	ProductPrice            []string      `json:"productPrice"`
@@ -174,7 +174,7 @@ func (c *CreateInvoiceRequest) SetAlternativeCurrency(alternativeCurrency string
 	return c
 }
 
-func (c *CreateInvoiceRequest) SetOrderTimeout(orderTimeout string) *CreateInvoiceRequest {
+func (c *CreateInvoiceRequest) SetOrderTimeout(orderTimeout time.Duration) *CreateInvoiceRequest {
 	c.OrderTimeout = orderTimeout
 	return c
 }
